@@ -31,6 +31,7 @@ static PyObject* pylzf_compress(PyObject* self, PyObject* args) {
 
 	/* Data compression */
 	if ((aux = lzf_compress(in_obj.buf, in_obj.len, out, aux)) == 0) {
+		free(out);
 		PyBuffer_Release(&in_obj);
 		PyErr_SetNone(PyExc_IOError);
 		return NULL;
@@ -39,6 +40,7 @@ static PyObject* pylzf_compress(PyObject* self, PyObject* args) {
 
 	/* Build output object */
 	if ( (out_obj = Py_BuildValue("y#", out, aux)) == NULL ) {
+		free(out);
 		return NULL;
 	}
 	free(out);
@@ -63,6 +65,7 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 
 	/* Data decompression */
 	if ((ret = lzf_decompress(in_obj.buf, in_obj.len, out, in_obj.len * MAX_DECOMPRESS_OVERSIZE)) == 0) {
+		free(out);
 		PyBuffer_Release(&in_obj);
 		PyErr_SetNone(PyExc_IOError);
 		return NULL;
@@ -71,6 +74,7 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 
 	/* Build output object */
 	if ( (out_obj = Py_BuildValue("y#", out, ret)) == NULL ) {
+		free(out);
 		return NULL;
 	}
 	free(out);
@@ -79,7 +83,7 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 }
 
 /* Module functions */
-static PyMethodDef MyMethods[] = {
+static PyMethodDef Methods[] = {
 	{"compress", pylzf_compress, METH_VARARGS, "Compress arbitrary data."},
 	{"decompress",  pylzf_decompress, METH_VARARGS, "Decompress arbitrary data."},
 	{NULL, NULL, 0, NULL}	/* Sentinel */
@@ -91,7 +95,7 @@ static struct PyModuleDef module = {
 	.m_name = "pylzf",
 	.m_doc = NULL,
 	.m_size = -1,
-	.m_methods = MyMethods,
+	.m_methods = Methods,
 	.m_slots = NULL
 };
 

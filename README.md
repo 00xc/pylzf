@@ -8,7 +8,7 @@ Python 3 bindings for [liblzf](http://oldhome.schmorp.de/marc/liblzf.html). From
 > * Block compression. If you have repeated blocks of data (IP packets, application state etc..), then liblzf is ideal to decrease the size at a very small cost, as liblzf is basically free on modern cpus.
 
 ## Installation ##
-`$ git clone https://github.com/00xc/pylzf.git`
+`$ git clone https://github.com/00xc/pylzf.git`\
 `$ cd pylzf && python3 -m pip install .`
 
 ## Usage ##
