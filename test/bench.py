@@ -2,11 +2,12 @@ import random
 import string
 import time
 
-from pylzf import compress, decompress
+import pylzf
 import zlib
 
 def mean(x):
 	return sum(x)/len(x)
+
 
 if __name__ == '__main__':
 
@@ -15,50 +16,50 @@ if __name__ == '__main__':
 	with open("/usr/share/dict/american-english", "r") as f:
 		words = [w.rstrip() for w in f.readlines()]
 
-	for NWORDS in [1000, 10_000, 100_000]:
+	for NWORDS in [100, 1_000, 10_000, 100_000, 500_000]:
 
-		print("-"*50)
-		print("[*] Launching tests with {} words each".format(NWORDS))
-		print("-"*50)
-
-		res = []
-		ratio = []
-		saved = []
+		sizes = []
+		elapsed = []
 		for _ in range(NTESTS):
-			data = "".join(random.choice(words) for _ in range(NWORDS)).encode()
-			osize = len(data)
+			data = " ".join(random.choice(words) for _ in range(NWORDS)).encode()
 
 			t0 = time.perf_counter()
-			data = compress(data)
+			result = pylzf.compress(data)
+			t0 = time.perf_counter() - t0
 
-			res.append(time.perf_counter() - t0)
-			ratio.append(osize/len(data))
-			saved.append(1 - (len(data)/osize))
+			try:
+				dcmpr = pylzf.decompress(result)
+				assert(data == dcmpr)
+			except:
+				print(len(data), "->", len(result), "->", len(dcmpr))
 
-		print(" [pylzf] total time ({} tests): {} ms".format(NTESTS, round(sum(res)*1000, 3)))
-		print(" [pylzf] avg. time taken: {} ms".format(round(mean(res)*1000, 3)))
-		print(" [pylzf] avg. compression ratio: {}".format(round(mean(ratio), 3)))
-		print(" [pylzf] avg. space saving: {} %".format(round(mean(saved)*100, 3)))
+			sizes.append((len(data), len(result)))
+			elapsed.append(t0)
 
-		print("-"*50)
+		print("[PYLZF {:6d} words] Total time: {:9.3f} ms | Average time/test: {:7.3f} ms | Avg. space saved: {} %".format(
+			NWORDS,
+			round(sum(elapsed)*1000, 3),
+			round(mean(elapsed)*1000, 3),
+			round(mean([(1 - (d[1]/d[0]))*100 for d in sizes]), 3)
+		))
 
-		res = []
-		ratio = []
-		saved = []
+		sizes = []
+		elapsed = []
 		for _ in range(NTESTS):
-			data = "".join(random.choice(words) for _ in range(NWORDS)).encode()
-			osize = len(data)
+			data = " ".join(random.choice(words) for _ in range(NWORDS)).encode()
 
 			t0 = time.perf_counter()
-			data = zlib.compress(data, level=1)
-			
-			res.append(time.perf_counter() - t0)
-			ratio.append(osize/len(data))
-			saved.append(1 - (len(data)/osize))
+			result = zlib.compress(data, level=1)
+			t0 = time.perf_counter() - t0
 
-		print(" [zlib] total time ({} tests): {} ms".format(NTESTS, round(sum(res)*1000, 3)))
-		print(" [zlib] avg. time taken: {} ms".format(round(mean(res)*1000, 3)))
-		print(" [zlib] avg. compression ratio: {}".format(round(mean(ratio), 3)))
-		print(" [zlib] avg. space saving: {} %".format(round(mean(saved)*100, 3)))
+			assert(data == zlib.decompress(result))
 
-		print("")
+			sizes.append((len(data), len(result)))
+			elapsed.append(t0)
+
+		print("[ZLIB {:7d} words] Total time: {:9.3f} ms | Average time/test: {:7.3f} ms | Avg. space saved: {} %".format(
+			NWORDS,
+			round(sum(elapsed)*1000, 3),
+			round(mean(elapsed)*1000, 3),
+			round(mean([(1 - (d[1]/d[0]))*100 for d in sizes]), 3)
+		))

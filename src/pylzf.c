@@ -3,9 +3,18 @@
 
 #include <liblzf-3.6/lzf.h>
 
+/*
+ * These values define how big we expect the result to be as a function of the
+ * size of the input data, i.e., given N bytes of uncompressed, we expect the 
+ * compressed data to have a max. size of N * MAX_COMPRESS_OVERSIZE. For
+ * exceptionally small sizes, we use MAX_COMPRESS_OVERSIZE_SAFE. For
+ * decompression there is not a maximum value, but an initial one that will be
+ * increased over several iterations (MAX_RETRIES at most).
+ */
 #define MAX_COMPRESS_OVERSIZE		1.2
 #define MAX_COMPRESS_OVERSIZE_SAFE	2
-#define MAX_DECOMPRESS_OVERSIZE 	1.4
+#define INITIAL_DECOMPRESS_OVERSIZE 	1.5
+#define MAX_DECOMPRESS_RETRIES		15
 
 #define THREADSAFE_CLEANUP(ptr, buf) \
 	if (ptr) { free(ptr); } \
@@ -25,7 +34,7 @@ static PyObject* pylzf_compress(PyObject* self, PyObject* args) {
 	/* GIL-free section */
 	Py_BEGIN_ALLOW_THREADS
 
-		/* Estimate maximum compression output length */
+		/* Estimate maximum compression output length. */
 		if (in_obj.len > 7) {
 			aux = lround(in_obj.len * MAX_COMPRESS_OVERSIZE);
 		} else {
@@ -61,7 +70,7 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 	Py_buffer in_obj;
 	PyObject* out_obj;
 	unsigned char* out;
-	unsigned int aux;
+	unsigned int aux = 0, i = 0;
 
 	if (!PyArg_ParseTuple(args, "y*", &in_obj)) {
 		return NULL;
@@ -70,15 +79,34 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 	/* GIL-free section */
 	Py_BEGIN_ALLOW_THREADS
 
-		aux = in_obj.len * MAX_DECOMPRESS_OVERSIZE;
+		/* 
+		 * This loop keeps trying to allocate bigger and bigger
+		 * buffers until one is big enough to decompress all the data.
+		 * For example, for N bytes of compressed data, the tried
+		 * values will be:
+		 * i = 0    N * INITIAL_DECOMPRESS_OVERSIZE
+		 * i = 1    N * (INITIAL_DECOMPRESS_OVERSIZE * 2)
+		 * i = 2    N * (INITIAL_DECOMPRESS_OVERSIZE * 4)
+		 * i = 3    N * (INITIAL_DECOMPRESS_OVERSIZE * 8)
+		 * etc.
+		 */
+		while (aux == 0 && i++ < MAX_DECOMPRESS_RETRIES) {
 
-		if ( (out = malloc(aux)) == NULL ) {
-			THREADSAFE_CLEANUP(NULL, &in_obj)
-			return PyErr_NoMemory();
+			aux = in_obj.len * (INITIAL_DECOMPRESS_OVERSIZE * (1 << i));
+
+			if ( (out = malloc(aux)) == NULL ) {
+				THREADSAFE_CLEANUP(NULL, &in_obj)
+				return PyErr_NoMemory();
+			}
+
+			if ( (aux = lzf_decompress(in_obj.buf, in_obj.len, out, aux)) == 0 ) {
+				free(out);
+			}
 		}
 
-		if ((aux = lzf_decompress(in_obj.buf, in_obj.len, out, aux)) == 0) {
-			THREADSAFE_CLEANUP(out, &in_obj)
+		/* Max. retries reached */
+		if (aux == 0) {
+			THREADSAFE_CLEANUP(NULL, &in_obj)
 			PyErr_SetNone(PyExc_IOError);
 			return NULL;
 		}
