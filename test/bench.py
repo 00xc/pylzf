@@ -1,5 +1,4 @@
 import random
-import string
 import time
 
 import pylzf
@@ -7,7 +6,6 @@ import zlib
 
 def mean(x):
 	return sum(x)/len(x)
-
 
 if __name__ == '__main__':
 

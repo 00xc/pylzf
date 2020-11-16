@@ -1,7 +1,5 @@
 import os
-import random
 import time
-import sys
 from pylzf import compress, decompress
 
 SIZES = (2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 1_000, 10_000, 100_000, 1_000_000, 5_000_000, 10_000_000, 50_000_000)
