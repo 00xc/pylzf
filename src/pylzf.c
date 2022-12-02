@@ -4,12 +4,13 @@
 #include <liblzf-3.6/lzf.h>
 
 /*
- * These values define how big we expect the result to be as a function of the
- * size of the input data, i.e., given N bytes of uncompressed, we expect the 
- * compressed data to have a max. size of N * MAX_COMPRESS_OVERSIZE. For
- * exceptionally small sizes, we use MAX_COMPRESS_OVERSIZE_SAFE. For
- * decompression there is not a maximum value, but an initial one that will be
- * increased over several iterations (MAX_RETRIES at most).
+ * These values define how big we expect the result to be as a function
+ * of the size of the input data, i.e., given N bytes of uncompressed
+ * data, we expect the compressed data to have a max. size of
+ * N * MAX_COMPRESS_OVERSIZE. For exceptionally small sizes, we use
+ * MAX_COMPRESS_OVERSIZE_SAFE. For decompression there is not a maximum
+ * value, but an initial one that will be increased over several
+ * iterations (MAX_DECOMPRESS_RETRIES at most).
  */
 #define MAX_COMPRESS_OVERSIZE		1.2
 #define MAX_COMPRESS_OVERSIZE_SAFE	2
@@ -34,7 +35,7 @@ static PyObject* pylzf_compress(PyObject* self, PyObject* args) {
 	/* GIL-free section */
 	Py_BEGIN_ALLOW_THREADS
 
-		/* Estimate maximum compression output length. */
+		/* Estimate maximum compression output size */
 		if (in_obj.len > 7) {
 			aux = lround(in_obj.len * MAX_COMPRESS_OVERSIZE);
 		} else {
