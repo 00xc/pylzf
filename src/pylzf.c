@@ -12,10 +12,10 @@
  * value, but an initial one that will be increased over several
  * iterations (MAX_DECOMPRESS_RETRIES at most).
  */
-#define MAX_COMPRESS_OVERSIZE		1.2
-#define MAX_COMPRESS_OVERSIZE_SAFE	2
-#define INITIAL_DECOMPRESS_OVERSIZE 	1.5
-#define MAX_DECOMPRESS_RETRIES		15
+#define MAX_COMPRESS_OVERSIZE       1.2
+#define MAX_COMPRESS_OVERSIZE_SAFE  2
+#define INITIAL_DECOMPRESS_OVERSIZE 1.5
+#define MAX_DECOMPRESS_RETRIES      15
 
 #define THREADSAFE_CLEANUP(ptr, buf) \
 	if (ptr) { free(ptr); } \
@@ -28,9 +28,8 @@ static PyObject* pylzf_compress(PyObject* self, PyObject* args) {
 	unsigned char* out;
 	unsigned int aux;
 
-	if (!PyArg_ParseTuple(args, "y*", &in_obj)) {
+	if (!PyArg_ParseTuple(args, "y*", &in_obj))
 		return NULL;
-	}
 
 	/* GIL-free section */
 	Py_BEGIN_ALLOW_THREADS
@@ -42,13 +41,15 @@ static PyObject* pylzf_compress(PyObject* self, PyObject* args) {
 			aux = lround(in_obj.len * MAX_COMPRESS_OVERSIZE_SAFE);
 		}
 
-		if ( (out = malloc(aux)) == NULL ) {
+		out = malloc(aux);
+		if (out == NULL) {
 			THREADSAFE_CLEANUP(NULL, &in_obj)
 			return PyErr_NoMemory();
 		}
 
 		/* Data compression */
-		if ((aux = lzf_compress(in_obj.buf, in_obj.len, out, aux)) == 0) {
+		aux = lzf_compress(in_obj.buf, in_obj.len, out, aux);
+		if (aux == 0) {
 			THREADSAFE_CLEANUP(out, &in_obj)
 			PyErr_SetNone(PyExc_IOError);
 			return NULL;
@@ -58,10 +59,7 @@ static PyObject* pylzf_compress(PyObject* self, PyObject* args) {
 	PyBuffer_Release(&in_obj);
 
 	/* Build output object */
-	if ( (out_obj = Py_BuildValue("y#", out, aux)) == NULL ) {
-		free(out);
-		return NULL;
-	}
+	out_obj = Py_BuildValue("y#", out, aux);
 	free(out);
 
 	return out_obj;
@@ -73,9 +71,8 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 	unsigned char* out;
 	unsigned int aux = 0, i = 0;
 
-	if (!PyArg_ParseTuple(args, "y*", &in_obj)) {
+	if (!PyArg_ParseTuple(args, "y*", &in_obj))
 		return NULL;
-	}
 
 	/* GIL-free section */
 	Py_BEGIN_ALLOW_THREADS
@@ -95,12 +92,14 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 
 			aux = in_obj.len * (INITIAL_DECOMPRESS_OVERSIZE * (1 << i));
 
-			if ( (out = malloc(aux)) == NULL ) {
+			out = malloc(aux);
+			if (out == NULL) {
 				THREADSAFE_CLEANUP(NULL, &in_obj)
 				return PyErr_NoMemory();
 			}
 
-			if ( (aux = lzf_decompress(in_obj.buf, in_obj.len, out, aux)) == 0 ) {
+			aux = lzf_decompress(in_obj.buf, in_obj.len, out, aux);
+			if (aux == 0) {
 				free(out);
 			}
 		}
@@ -116,10 +115,7 @@ static PyObject* pylzf_decompress(PyObject* self, PyObject* args) {
 	PyBuffer_Release(&in_obj);
 
 	/* Build output object */
-	if ( (out_obj = Py_BuildValue("y#", out, aux)) == NULL ) {
-		free(out);
-		return NULL;
-	}
+	out_obj = Py_BuildValue("y#", out, aux);
 	free(out);
 
 	return out_obj;
